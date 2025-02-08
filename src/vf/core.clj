@@ -8,7 +8,7 @@
   (to-str [this data])
   (regex  [this])
   (parse  [this s])
-  (put    [this s x]))
+  (put    [this acc x]))
 
 
 (defn format [fmt data]

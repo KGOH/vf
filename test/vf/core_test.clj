@@ -4,7 +4,7 @@
 
 
 (t/deftest vfmt-test
-  (def pat (vf/v ["v" (vf/i :major) \. (vf/i :minor)]))
+  (def pat (vf/fv ["v" (vf/i :major) \. (vf/i :minor)]))
   (def data {:major 1 :minor 12})
   (def s "v1.12")
 
@@ -68,8 +68,8 @@
         (t/is (thrown? java.lang.IllegalArgumentException
                 (vf/get (vf/s :a) {:a 1}))))))
 
-  (t/testing "vfmt"
-    (def pat (vf/v ["ver" (vf/i :major) \. (vf/i :minor)]))
+  (t/testing "fv"
+    (def pat (vf/fv ["ver" (vf/i :major) \. (vf/i :minor)]))
     (def data {:major 1 :minor 12})
 
     (t/is (= ["ver" 1 \. 12]                    (vf/get pat data)))

@@ -59,7 +59,7 @@
             (parse  [_ s]     s)
             (put    [_ acc x] (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
-      (.write w "#v/s ")
+      (.write w "#vf/s ")
       (print-simple k w))
     p))
 
@@ -72,7 +72,7 @@
             (parse  [_ s]       s)
             (put    [_ acc x]   (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
-      (.write w "#v/as-s ")
+      (.write w "#vf/as-s ")
       (print-simple k w))
     p))
 
@@ -85,7 +85,7 @@
             (parse  [_ s]     (edn/read-string s))
             (put    [_ acc x] (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
-      (.write w "#v/i ")
+      (.write w "#vf/i ")
       (print-simple k w))
     p))
 
@@ -98,12 +98,12 @@
             (parse  [_ s]     (edn/read-string s))
             (put    [_ acc x] (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
-      (.write w "#v/f ")
+      (.write w "#vf/f ")
       (print-simple k w))
     p))
 
 
-(defn v [vfmt]
+(defn fv [vfmt]
   (let [p (reify vf
             (get    [_ data]   (map #(get % data) vfmt))
             (to-str [_ data]   (apply str (map to-str vfmt data)))
@@ -113,6 +113,6 @@
                                        acc
                                        (map vector vfmt xs))))]
     (defmethod print-method (type p) [_this w]
-      (.write w "#v/v")
+      (.write w "#vf/fv")
       (print-simple vfmt w))
     p))

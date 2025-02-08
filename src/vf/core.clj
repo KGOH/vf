@@ -11,24 +11,24 @@
   (put    [this s x]))
 
 
-(defn format [this data]
+(defn format [fmt data]
   (->> data
-       (get this)
-       (to-str this)))
+       (get fmt)
+       (to-str fmt)))
 
 
-(defn match [this s]
-  (-> (regex this)
+(defn match [fmt s]
+  (-> (regex fmt)
       re-pattern
       (re-matches s)
       rest))
 
 
-(defn extract [this s]
+(defn extract [fmt s]
   (->> s
-       (match this)
-       (parse this)
-       (put this {})))
+       (match fmt)
+       (parse fmt)
+       (put fmt {})))
 
 
 ;;; impl ;;;

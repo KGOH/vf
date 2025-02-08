@@ -12,15 +12,23 @@
 
 
 (defn format [this data]
-  (->> data (get this) (to-str this)))
+  (->> data
+       (get this)
+       (to-str this)))
 
 
 (defn match [this s]
-  (rest (re-matches (re-pattern (regex this)) s)))
+  (-> (regex this)
+      re-pattern
+      (re-matches s)
+      rest))
 
 
 (defn extract [this s]
-  (put this {} (parse this (match this s))))
+  (->> s
+       (match this)
+       (parse this)
+       (put this {})))
 
 
 ;;; impl ;;;

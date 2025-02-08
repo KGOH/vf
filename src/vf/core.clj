@@ -37,10 +37,10 @@
 (def re-quote java.util.regex.Pattern/quote)
 
 
-(defn ensure-value-ok! [k v value-check-fn]
+(defn ensure-value-ok! [this v value-check-fn]
   (if (value-check-fn v)
     v
-    (throw (java.lang.IllegalArgumentException. (str "Unexpected value " v " for " k)))))
+    (throw (java.lang.IllegalArgumentException. (str "Unexpected value " (pr-str v) " for " (pr-str this))))))
 
 
 (extend-protocol vf
@@ -61,11 +61,11 @@
 
 (defn s [k]
   (let [p (reify vf
-            (get    [_ data]  (ensure-value-ok! k (clojure.core/get data k) string?))
-            (to-str [_ data]  (str data))
-            (regex  [_]       "(.*)")
-            (parse  [_ s]     s)
-            (put    [_ acc x] (assoc acc k x)))]
+            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) string?))
+            (to-str [_ data]    (str data))
+            (regex  [_]         "(.*)")
+            (parse  [_ s]       s)
+            (put    [_ acc x]   (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
       (.write w "#vf/s ")
       (print-simple k w))
@@ -74,11 +74,11 @@
 
 (defn as-s [k]
   (let [p (reify vf
-            (get    [_ data]    (clojure.core/get data k))
-            (to-str [_ data]    (str data))
-            (regex  [_]         "(.*)")
-            (parse  [_ s]       s)
-            (put    [_ acc x]   (assoc acc k x)))]
+            (get    [_ data]  (clojure.core/get data k))
+            (to-str [_ data]  (str data))
+            (regex  [_]       "(.*)")
+            (parse  [_ s]     s)
+            (put    [_ acc x] (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
       (.write w "#vf/as-s ")
       (print-simple k w))
@@ -87,11 +87,11 @@
 
 (defn i [k]
   (let [p (reify vf
-            (get    [_ data]  (ensure-value-ok! k (clojure.core/get data k) integer?))
-            (to-str [_ data]  (str data))
-            (regex  [_]       "(\\d*)")
-            (parse  [_ s]     (edn/read-string s))
-            (put    [_ acc x] (assoc acc k x)))]
+            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) integer?))
+            (to-str [_ data]    (str data))
+            (regex  [_]         "(\\d*)")
+            (parse  [_ s]       (edn/read-string s))
+            (put    [_ acc x]   (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
       (.write w "#vf/i ")
       (print-simple k w))
@@ -100,11 +100,11 @@
 
 (defn f [k]
   (let [p (reify vf
-            (get    [_ data]  (ensure-value-ok! k (clojure.core/get data k) float?))
-            (to-str [_ data]  (str data))
-            (regex  [_]       "(\\d*(?:\\.\\d*)?)")
-            (parse  [_ s]     (edn/read-string s))
-            (put    [_ acc x] (assoc acc k x)))]
+            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) float?))
+            (to-str [_ data]    (str data))
+            (regex  [_]         "(\\d*(?:\\.\\d*)?)")
+            (parse  [_ s]       (edn/read-string s))
+            (put    [_ acc x]   (assoc acc k x)))]
     (defmethod print-method (type p) [_this w]
       (.write w "#vf/f ")
       (print-simple k w))

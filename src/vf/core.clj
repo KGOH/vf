@@ -4,6 +4,23 @@
             [vf.protocols :as p]))
 
 
+;; TODO:
+;; composable formatters and style fn vs data:
+;; key
+;;      (vf/fv ["v" (vf/i :major)])
+;;      (vf/fv ["v" (vf/key :major vf/i)])
+;; (vf/tpl [:fv "v" [:key :major :i]])
+;; (vf/tpl [:fv "v" [:major :i]])
+;; idx
+;;      (vf/fv ["v" (vf/i 0)])
+;;      (vf/fv ["v" (vf/idx 0 vf/i)])
+;; (vf/tpl [:fv "v" [:idx 0 :i]])
+;; (vf/tpl [:fv "v" [:i 0]])
+;; pos
+;;      (vf/fv ["v" (vf/i)])
+;; (vf/tpl [:fv "v" :i])
+
+
 ;;; protocol access ;;;
 
 

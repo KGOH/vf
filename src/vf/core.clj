@@ -5,7 +5,7 @@
 
 (defprotocol vf
   (get    [this data])
-  (to-str [this data])
+  (to-str [this x])
   (regex  [this])
   (parse  [this s])
   (put    [this acc x]))
@@ -45,24 +45,24 @@
 
 (extend-protocol vf
   String
-  (get    [this _data]  this)
-  (to-str [_this value] value)
-  (regex  [this]        (str \( (re-quote this) \)))
-  (parse  [_ s]         s)
-  (put    [_ acc _s]    acc)
+  (get    [this _data] this)
+  (to-str [_this x]    x)
+  (regex  [this]       (str \( (re-quote this) \)))
+  (parse  [_ s]        s)
+  (put    [_ acc _x]   acc)
 
   Character
-  (get    [this _data]   this)
-  (to-str [_this value]  (str value))
-  (regex  [this]         (str \( (re-quote (str this)) \)))
-  (parse  [_ s]          (first s))
-  (put    [_ acc _s]     acc))
+  (get    [this _data] this)
+  (to-str [_this x]    (str x))
+  (regex  [this]       (str \( (re-quote (str this)) \)))
+  (parse  [_ s]        (first s))
+  (put    [_ acc _x]   acc))
 
 
 (defn s [k]
   (let [p (reify vf
             (get    [this data] (ensure-value-ok! this (clojure.core/get data k) string?))
-            (to-str [_ data]    (str data))
+            (to-str [_ x]       (str x))
             (regex  [_]         "(.*)")
             (parse  [_ s]       s)
             (put    [_ acc x]   (assoc acc k x)))]
@@ -74,8 +74,8 @@
 
 (defn as-s [k]
   (let [p (reify vf
-            (get    [_ data]  (clojure.core/get data k))
-            (to-str [_ data]  (str data))
+            (get    [_ data] (clojure.core/get data k))
+            (to-str [_ x]     (str x))
             (regex  [_]       "(.*)")
             (parse  [_ s]     s)
             (put    [_ acc x] (assoc acc k x)))]
@@ -88,7 +88,7 @@
 (defn i [k]
   (let [p (reify vf
             (get    [this data] (ensure-value-ok! this (clojure.core/get data k) integer?))
-            (to-str [_ data]    (str data))
+            (to-str [_ x]       (str x))
             (regex  [_]         "(\\d*)")
             (parse  [_ s]       (edn/read-string s))
             (put    [_ acc x]   (assoc acc k x)))]
@@ -101,7 +101,7 @@
 (defn f [k]
   (let [p (reify vf
             (get    [this data] (ensure-value-ok! this (clojure.core/get data k) float?))
-            (to-str [_ data]    (str data))
+            (to-str [_ x]       (str x))
             (regex  [_]         "(\\d*(?:\\.\\d*)?)")
             (parse  [_ s]       (edn/read-string s))
             (put    [_ acc x]   (assoc acc k x)))]
@@ -114,7 +114,7 @@
 (defn fv [vfmt]
   (let [p (reify vf
             (get    [_ data]   (map #(get % data) vfmt))
-            (to-str [_ data]   (apply str (map to-str vfmt data)))
+            (to-str [_ xs]     (apply str (map to-str vfmt xs)))
             (regex  [_]        (apply str (map regex vfmt)))
             (parse  [_ ss]     (map parse vfmt ss))
             (put    [_ acc xs] (reduce (fn [acc [that x]] (put that acc x))

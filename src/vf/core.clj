@@ -59,68 +59,65 @@
   (put    [_ acc _x]   acc))
 
 
+(defmethod print-method ::with-key [this w]
+   (.write w "#vf/")
+   (.write w (name (:name (meta this))))
+   (.write w " ")
+   (print-simple (:k (meta this)) w))
+
+
 (defn s [k]
-  (let [p (reify vf
-            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) string?))
-            (to-str [_ x]       (str x))
-            (regex  [_]         "(.*)")
-            (parse  [_ s]       s)
-            (put    [_ acc x]   (assoc acc k x)))]
-    (defmethod print-method (type p) [_this w]
-      (.write w "#vf/s ")
-      (print-simple k w))
-    p))
+  ^{:type ::with-key :k k :name :s}
+  (reify vf
+    (get    [this data] (ensure-value-ok! this (clojure.core/get data k) string?))
+    (to-str [_ x]       (str x))
+    (regex  [_]         "(.*)")
+    (parse  [_ s]       s)
+    (put    [_ acc x]   (assoc acc k x))))
 
 
 (defn as-s [k]
-  (let [p (reify vf
-            (get    [_ data]  (clojure.core/get data k))
-            (to-str [_ x]     (str x))
-            (regex  [_]       "(.*)")
-            (parse  [_ s]     s)
-            (put    [_ acc x] (assoc acc k x)))]
-    (defmethod print-method (type p) [_this w]
-      (.write w "#vf/as-s ")
-      (print-simple k w))
-    p))
+  ^{:type ::with-key :k k :name :as-s}
+  (reify vf
+    (get    [_ data]  (clojure.core/get data k))
+    (to-str [_ x]     (str x))
+    (regex  [_]       "(.*)")
+    (parse  [_ s]     s)
+    (put    [_ acc x] (assoc acc k x))))
 
 
 (defn i [k]
-  (let [p (reify vf
-            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) integer?))
-            (to-str [_ x]       (str x))
-            (regex  [_]         "(\\d*)")
-            (parse  [_ s]       (edn/read-string s))
-            (put    [_ acc x]   (assoc acc k x)))]
-    (defmethod print-method (type p) [_this w]
-      (.write w "#vf/i ")
-      (print-simple k w))
-    p))
+  ^{:type ::with-key :k k :name :i}
+  (reify vf
+    (get    [this data] (ensure-value-ok! this (clojure.core/get data k) integer?))
+    (to-str [_ x]       (str x))
+    (regex  [_]         "(\\d*)")
+    (parse  [_ s]       (edn/read-string s))
+    (put    [_ acc x]   (assoc acc k x))))
 
 
 (defn f [k]
-  (let [p (reify vf
-            (get    [this data] (ensure-value-ok! this (clojure.core/get data k) float?))
-            (to-str [_ x]       (str x))
-            (regex  [_]         "(\\d*(?:\\.\\d*)?)")
-            (parse  [_ s]       (edn/read-string s))
-            (put    [_ acc x]   (assoc acc k x)))]
-    (defmethod print-method (type p) [_this w]
-      (.write w "#vf/f ")
-      (print-simple k w))
-    p))
+  ^{:type ::with-key :k k :name :f}
+  (reify vf
+    (get    [this data] (ensure-value-ok! this (clojure.core/get data k) float?))
+    (to-str [_ x]       (str x))
+    (regex  [_]         "(\\d*(?:\\.\\d*)?)")
+    (parse  [_ s]       (edn/read-string s))
+    (put    [_ acc x]   (assoc acc k x))))
+
+
+(defmethod print-method ::fv [this w]
+  (.write w "#vf/fv")
+  (print-simple (:vfmt (meta this)) w))
 
 
 (defn fv [vfmt]
-  (let [p (reify vf
-            (get    [_ data]   (map #(get % data) vfmt))
-            (to-str [_ xs]     (apply str (map to-str vfmt xs)))
-            (regex  [_]        (apply str (map regex vfmt)))
-            (parse  [_ ss]     (map parse vfmt ss))
-            (put    [_ acc xs] (reduce (fn [acc [that x]] (put that acc x))
-                                       acc
-                                       (map vector vfmt xs))))]
-    (defmethod print-method (type p) [_this w]
-      (.write w "#vf/fv")
-      (print-simple vfmt w))
-    p))
+  ^{:type ::fv :vfmt vfmt}
+  (reify vf
+    (get    [_ data]   (map #(get % data) vfmt))
+    (to-str [_ xs]     (apply str (map to-str vfmt xs)))
+    (regex  [_]        (apply str (map regex vfmt)))
+    (parse  [_ ss]     (map parse vfmt ss))
+    (put    [_ acc xs] (reduce (fn [acc [that x]] (put that acc x))
+                               acc
+                               (map vector vfmt xs)))))

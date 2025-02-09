@@ -3,7 +3,7 @@
             [vf.core :as vf]))
 
 
-(t/deftest vfmt-test
+(t/deftest fv-test
   (def pat (vf/fv ["v" (vf/i :major) \. (vf/i :minor)]))
   (def data {:major 1 :minor 12})
   (def s "v1.12")

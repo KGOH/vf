@@ -1,14 +1,20 @@
 (ns vf.core
   (:refer-clojure :exclude [get format])
-  (:require [clojure.edn :as edn]))
+  (:require [clojure.edn :as edn]
+            [vf.protocols :as p]))
 
 
-(defprotocol vf
-  (get    [this data])
-  (to-str [this x])
-  (regex  [this])
-  (parse  [this s])
-  (put    [this acc x]))
+;;; protocol access ;;;
+
+
+(defn get    [pat data]  (p/get    pat data))
+(defn to-str [pat x]     (p/to-str pat x))
+(defn regex  [pat]       (p/regex  pat))
+(defn parse  [pat s]     (p/parse  pat s))
+(defn put    [pat acc x] (p/put    pat acc x))
+
+
+;;; public functions ;;;
 
 
 (defn format [fmt data]
@@ -37,13 +43,7 @@
 (def re-quote java.util.regex.Pattern/quote)
 
 
-(defn ensure-value-ok! [this v value-check-fn]
-  (if (value-check-fn v)
-    v
-    (throw (java.lang.IllegalArgumentException. (str "Unexpected value " (pr-str v) " for " (pr-str this))))))
-
-
-(extend-protocol vf
+(extend-protocol p/vf
   String
   (get    [this _data] this)
   (to-str [_ x]        x)
@@ -59,16 +59,26 @@
   (put    [_ acc _x]   acc))
 
 
-(defmethod print-method ::with-key [this w]
+(defn ensure-value-ok! [this v value-check-fn]
+  (if (value-check-fn v)
+    v
+    (throw (java.lang.IllegalArgumentException. (str "Unexpected value " (pr-str v) " for " (pr-str this))))))
+
+
+(defmethod print-method ::vf [this w]
    (.write w "#vf/")
    (.write w (name (:name (meta this))))
    (.write w " ")
-   (print-simple (:k (meta this)) w))
+   (print-simple (:v (meta this)) w))
 
 
 (defn s [k]
-  ^{:type ::with-key :k k :name :s}
-  (reify vf
+  ^{:type ::vf, :name :s, :v k}
+  (reify
+    Object
+    (toString [this] (pr-str this))
+
+    p/vf
     (get    [this data] (ensure-value-ok! this (clojure.core/get data k) string?))
     (to-str [_ x]       (str x))
     (regex  [_]         "(.*)")
@@ -77,8 +87,12 @@
 
 
 (defn as-s [k]
-  ^{:type ::with-key :k k :name :as-s}
-  (reify vf
+  ^{:type ::vf, :name :as-s, :v k}
+  (reify
+    Object
+    (toString [this] (pr-str this))
+
+    p/vf
     (get    [_ data]  (clojure.core/get data k))
     (to-str [_ x]     (str x))
     (regex  [_]       "(.*)")
@@ -87,8 +101,12 @@
 
 
 (defn i [k]
-  ^{:type ::with-key :k k :name :i}
-  (reify vf
+  ^{:type ::vf, :name :i, :v k}
+  (reify
+    Object
+    (toString [this] (pr-str this))
+
+    p/vf
     (get    [this data] (ensure-value-ok! this (clojure.core/get data k) integer?))
     (to-str [_ x]       (str x))
     (regex  [_]         "(\\d*)")
@@ -97,8 +115,12 @@
 
 
 (defn f [k]
-  ^{:type ::with-key :k k :name :f}
-  (reify vf
+  ^{:type ::vf, :name :f, :v k}
+  (reify
+    Object
+    (toString [this] (pr-str this))
+
+    p/vf
     (get    [this data] (ensure-value-ok! this (clojure.core/get data k) float?))
     (to-str [_ x]       (str x))
     (regex  [_]         "(\\d*(?:\\.\\d*)?)")
@@ -106,15 +128,14 @@
     (put    [_ acc x]   (assoc acc k x))))
 
 
-(defmethod print-method ::fv [this w]
-  (.write w "#vf/fv")
-  (print-simple (:vfmt (meta this)) w))
-
-
 (defn fv [vfmt]
   (let [full-regex (apply str (map regex vfmt))]
-    ^{:type ::fv :vfmt vfmt}
-    (reify vf
+    ^{:type ::vf, :name :fv, :v vfmt}
+    (reify
+      Object
+      (toString [this] (pr-str this))
+
+      p/vf
       (get    [_ data]   (map #(get % data) vfmt))
       (to-str [_ xs]     (apply str (map to-str vfmt xs)))
       (regex  [_]        full-regex)

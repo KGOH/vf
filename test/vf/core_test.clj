@@ -59,7 +59,7 @@
     (t/is (= 1        (vf/parse      (vf/k :v vf/i) "1")))
     (t/is (= {:v 1}   (vf/put        (vf/k :v vf/i) {} 1))))
 
-  (t/testing "fv"
+  (t/testing "format vector"
     (def pat (vf/fv ["ver" (vf/k :major vf/i) \. (vf/k :minor vf/i)]))
     (def data {:major 1 :minor 12})
 

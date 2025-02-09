@@ -46,14 +46,14 @@
 (extend-protocol vf
   String
   (get    [this _data] this)
-  (to-str [_this x]    x)
+  (to-str [_ x]        x)
   (regex  [this]       (str \( (re-quote this) \)))
   (parse  [_ s]        s)
   (put    [_ acc _x]   acc)
 
   Character
   (get    [this _data] this)
-  (to-str [_this x]    (str x))
+  (to-str [_ x]        (str x))
   (regex  [this]       (str \( (re-quote (str this)) \)))
   (parse  [_ s]        (first s))
   (put    [_ acc _x]   acc))
@@ -112,12 +112,13 @@
 
 
 (defn fv [vfmt]
-  ^{:type ::fv :vfmt vfmt}
-  (reify vf
-    (get    [_ data]   (map #(get % data) vfmt))
-    (to-str [_ xs]     (apply str (map to-str vfmt xs)))
-    (regex  [_]        (apply str (map regex vfmt)))
-    (parse  [_ ss]     (map parse vfmt ss))
-    (put    [_ acc xs] (reduce (fn [acc [that x]] (put that acc x))
-                               acc
-                               (map vector vfmt xs)))))
+  (let [full-regex (apply str (map regex vfmt))]
+    ^{:type ::fv :vfmt vfmt}
+    (reify vf
+      (get    [_ data]   (map #(get % data) vfmt))
+      (to-str [_ xs]     (apply str (map to-str vfmt xs)))
+      (regex  [_]        full-regex)
+      (parse  [_ ss]     (map parse vfmt ss))
+      (put    [_ acc xs] (reduce (fn [acc [that x]] (put that acc x))
+                                 acc
+                                 (map vector vfmt xs))))))

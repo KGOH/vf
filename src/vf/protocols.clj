@@ -1,9 +1,17 @@
 (ns vf.protocols
   (:refer-clojure :exclude [get format]))
 
-(defprotocol vf
-  (get    [this data])
-  (to-str [this x])
-  (regex  [this])
-  (parse  [this s])
-  (put    [this acc x]))
+
+(defprotocol Token
+  :extend-via-metadata true
+  (ensure-ok! [this x])
+  (to-str     [this x])
+  (regex      [this])
+  (parse      [this s]))
+
+
+(defprotocol GetPut
+  :extend-via-metadata true
+  (get [this data])
+  (put [this acc x])
+  (token [this]))

@@ -74,7 +74,7 @@
 
 (defn as-s [k]
   (let [p (reify vf
-            (get    [_ data] (clojure.core/get data k))
+            (get    [_ data]  (clojure.core/get data k))
             (to-str [_ x]     (str x))
             (regex  [_]       "(.*)")
             (parse  [_ s]     s)

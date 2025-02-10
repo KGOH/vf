@@ -7,10 +7,10 @@
 ;;; protocol access ;;;
 
 
-(defn ok?    [pat x] ((p/ok? pat) x))
-(defn to-str [pat x] ((p/to-str pat) x))
+(defn ok?    [pat x] ((p/ok-fn? pat) x))
+(defn to-str [pat x] ((p/to-str-fn pat) x))
 (defn regex  [pat]   (p/regex pat))
-(defn parse  [pat s] ((p/parse pat) s))
+(defn parse  [pat s] ((p/parse-fn pat) s))
 
 (defn get [pat data]  (p/get pat data))
 (defn put [pat acc x] (p/put pat acc x))
@@ -30,8 +30,8 @@
 (defn format [fmt data]
   (->> data
        (p/get fmt)
-       (ensure-value-ok! fmt (p/ok? fmt))
-       ((p/to-str fmt))))
+       (ensure-value-ok! fmt (p/ok-fn? fmt))
+       ((p/to-str-fn fmt))))
 
 
 (defn match [fmt s]
@@ -44,7 +44,7 @@
 (defn extract [fmt s]
   (->> s
        (match fmt)
-       ((p/parse fmt))
+       ((p/parse-fn fmt))
        (p/put fmt {})))
 
 
@@ -54,92 +54,94 @@
 (def re-quote java.util.regex.Pattern/quote)
 
 
-
-
-(extend-type Object
-  p/Token
-  (ok?    [this] (-> (p/token this) p/ok?))
-  (to-str [this] (-> (p/token this) p/to-str))
-  (regex  [this] (-> (p/token this) p/regex))
-  (parse  [this] (-> (p/token this) p/parse)))
-
-
 (extend-type String
-  p/GetPut
+  p/Token
   (get [this _data]   this)
   (put [_this acc _x] acc)
 
-  p/Token
-  (ok?    [_]    identity)
-  (to-str [_]    identity)
-  (regex  [this] (str \( (re-quote this) \)))
-  (parse  [_]    identity))
+  (ok-fn?    [_]    identity)
+  (to-str-fn [_]    identity)
+  (regex     [this] (str \( (re-quote this) \)))
+  (parse-fn  [_]    identity))
 
 
 (extend-type Character
-  p/GetPut
+  p/Token
   (get [this _data]   this)
   (put [_this acc _x] acc)
 
+  (ok-fn?    [_]    identity)
+  (to-str-fn [_]    str)
+  (regex     [this] (str \( (re-quote (str this)) \)))
+  (parse-fn  [_]    first))
+
+
+(extend-type clojure.lang.Keyword
   p/Token
-  (ok?    [_]    identity)
-  (to-str [_]    str)
-  (regex  [this] (str \( (re-quote (str this)) \)))
-  (parse  [_]    first))
+  (get [k data]  (clojure.core/get data k))
+  (put [k acc x] (assoc acc k x))
+
+  (ok-fn?    [_] string?)
+  (to-str-fn [_] str)
+  (regex     [_] "(.*)")
+  (parse-fn  [_] identity))
 
 
-(defn k "key" [k token]
+(defn s "string" [k]
   (reify
-    p/GetPut
-    (get   [_ data]  (clojure.core/get data k))
-    (put   [_ acc x] (assoc acc k x))
-    (token [_]       token)))
+    p/Token
+    (get [_ data]  (clojure.core/get data k))
+    (put [_ acc x] (assoc acc k x))
+
+    (ok-fn?    [_] string?)
+    (to-str-fn [_] str)
+    (regex     [_] "(.*)")
+    (parse-fn  [_] identity)))
 
 
-(def s "string"
-  (reify p/Token
-    (ok?    [_] string?)
-    (to-str [_] str)
-    (regex  [_] "(.*)")
-    (parse  [_] identity)))
+(defn i "integer" [k]
+  (reify
+    p/Token
+    (get [_ data]  (clojure.core/get data k))
+    (put [_ acc x] (assoc acc k x))
+
+    (ok-fn?    [_] integer?)
+    (to-str-fn [_] str)
+    (regex     [_] "(\\d*)")
+    (parse-fn  [_] edn/read-string)))
 
 
-(def i "integer"
-  (reify p/Token
-    (ok?    [_] integer?)
-    (to-str [_] str)
-    (regex  [_] "(\\d*)")
-    (parse  [_] edn/read-string)))
+(defn f "float" [k]
+  (reify
+    p/Token
+    (get [_ data]  (clojure.core/get data k))
+    (put [_ acc x] (assoc acc k x))
 
-
-(def f "float"
-  (reify p/Token
-    (ok?    [_] float?)
-    (to-str [_] str)
-    (regex  [_] "(\\d*(?:\\.\\d*)?)")
-    (parse  [_] edn/read-string)))
+    (ok-fn?    [_] float?)
+    (to-str-fn [_] str)
+    (regex     [_] "(\\d*(?:\\.\\d*)?)")
+    (parse-fn  [_] edn/read-string)))
 
 
 (defn fv "format vector" [vfmt]
-  (let [to-str-fns  (mapv p/to-str vfmt)
+  (let [to-str-fns  (mapv p/to-str-fn vfmt)
         full-to-str (fn [xs] (apply str (mapv #(%1 %2) to-str-fns xs)))
 
         full-regex  (apply str (mapv p/regex vfmt))
 
-        parse-fns   (mapv p/parse vfmt)
+        parse-fns   (mapv p/parse-fn vfmt)
         full-parse  (fn [xs] (mapv #(%1 %2) parse-fns xs))
 
-        ok-fns      (mapv p/ok? vfmt)
+        ok-fns      (mapv p/ok-fn? vfmt)
         full-ok?    (fn [xs] (every? boolean (mapv #(%1 %2) ok-fns xs)))]
     (reify
-      p/GetPut
+      p/Token
       (get [_ data]   (mapv #(p/get % data) vfmt))
       (put [_ acc xs] (reduce (fn [acc [that x]] (p/put that acc x))
                               acc
                               (mapv vector vfmt xs)))
 
-      p/Token
-      (to-str [_] full-to-str)
-      (regex  [_] full-regex)
-      (parse  [_] full-parse)
-      (ok?    [_] full-ok?))))
+      (ok-fn?    [_] full-ok?)
+      (to-str-fn [_] full-to-str)
+      (regex     [_] full-regex)
+      (parse-fn  [_] full-parse))))

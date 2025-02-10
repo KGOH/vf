@@ -4,9 +4,9 @@
 
 
 (t/deftest fv-test
-  (def pat (vf/fv ["v" (vf/k :major vf/i) \. (vf/k :minor vf/i)]))
-  (def data {:major 1 :minor 12})
-  (def s "v1.12")
+  (def pat (vf/fv [:name " v" (vf/i :major) \. (vf/i :minor)]))
+  (def data {:name "app" :major 1 :minor 12})
+  (def s "app v1.12")
 
   (t/is (= s (vf/format pat data)))
   (t/is (= data (vf/extract pat s))))
@@ -23,44 +23,41 @@
 
   (t/testing "char constant"
     (t/is (vf/ok? \v \v))
-    (t/is (= \v          (vf/get        \v nil)))
-    (t/is (= "v"         (vf/to-str     \v \v)))
-    (t/is (= "(\\Qv\\E)" (vf/regex      \v)))
-    (t/is (= \v          (vf/parse      \v "v")))
-    (t/is (= {}          (vf/put        \v {} \v))))
+    (t/is (= \v          (vf/get    \v nil)))
+    (t/is (= "v"         (vf/to-str \v \v)))
+    (t/is (= "(\\Qv\\E)" (vf/regex  \v)))
+    (t/is (= \v          (vf/parse  \v "v")))
+    (t/is (= {}          (vf/put    \v {} \v))))
 
   (t/testing "string"
-    (t/is (vf/ok? vf/s "v"))
-    (t/is (not (vf/ok? vf/s 1)))
-    (t/is (= "v"    (vf/to-str vf/s "v")))
-    (t/is (= "(.*)" (vf/regex  vf/s)))
-    (t/is (= "v"    (vf/parse  vf/s "v"))))
+    (t/is (vf/ok? (vf/s :k) "v"))
+    (t/is (not (vf/ok? (vf/s :k) 1)))
+    (t/is (= "v"      (vf/get (vf/s :k) {:k "v"})))
+    (t/is (= {:k "v"} (vf/put (vf/s :k) {} "v")))
+    (t/is (= "v"      (vf/to-str (vf/s :k) "v")))
+    (t/is (= "(.*)"   (vf/regex  (vf/s :k))))
+    (t/is (= "v"      (vf/parse  (vf/s :k) "v"))))
 
   (t/testing "integer"
-    (t/is (vf/ok? vf/i 1))
-    (t/is (not (vf/ok? vf/i 1.1)))
-    (t/is (= "1"      (vf/to-str vf/i 1)))
-    (t/is (= "(\\d*)" (vf/regex  vf/i)))
-    (t/is (= 1        (vf/parse  vf/i "1"))))
+    (t/is (vf/ok? (vf/i :k) 1))
+    (t/is (not (vf/ok? (vf/i :k) 1.1)))
+    (t/is (= 1        (vf/get    (vf/i :k) {:k 1})))
+    (t/is (= {:k 1}   (vf/put    (vf/i :k) {} 1)))
+    (t/is (= "1"      (vf/to-str (vf/i :k) 1)))
+    (t/is (= "(\\d*)" (vf/regex  (vf/i :k))))
+    (t/is (= 1        (vf/parse  (vf/i :k) "1"))))
 
   (t/testing "float"
-    (t/is (vf/ok? vf/f 1.1))
-    (t/is (not (vf/ok? vf/f 1)))
-    (t/is (= "1.1"                (vf/to-str vf/f 1.1)))
-    (t/is (= "(\\d*(?:\\.\\d*)?)" (vf/regex  vf/f)))
-    (t/is (= 1.1                  (vf/parse  vf/f "1.1"))))
-
-  (t/testing "key"
-    (t/is (vf/ok? (vf/k :v vf/i) 1))
-    (t/is (not (vf/ok? (vf/k :v vf/i) 1.1)))
-    (t/is (= 1        (vf/get    (vf/k :v vf/i) {:v 1})))
-    (t/is (= "1"      (vf/to-str (vf/k :v vf/i) 1)))
-    (t/is (= "(\\d*)" (vf/regex  (vf/k :v vf/i))))
-    (t/is (= 1        (vf/parse  (vf/k :v vf/i) "1")))
-    (t/is (= {:v 1}   (vf/put    (vf/k :v vf/i) {} 1))))
+    (t/is (vf/ok? (vf/f :k) 1.1))
+    (t/is (not (vf/ok? (vf/f :k) 1)))
+    (t/is (= 1.1                  (vf/get    (vf/f :k) {:k 1.1})))
+    (t/is (= {:k 1.1}             (vf/put    (vf/f :k) {} 1.1)))
+    (t/is (= "1.1"                (vf/to-str (vf/f :k) 1.1)))
+    (t/is (= "(\\d*(?:\\.\\d*)?)" (vf/regex  (vf/f :k))))
+    (t/is (= 1.1                  (vf/parse  (vf/f :k) "1.1"))))
 
   (t/testing "format vector"
-    (def pat (vf/fv ["ver" (vf/k :major vf/i) \. (vf/k :minor vf/i)]))
+    (def pat (vf/fv ["ver" (vf/i :major) \. (vf/i :minor)]))
     (def data {:major 1 :minor 12})
 
     (t/is (vf/ok? pat ["ver" 1 \. 12]))

@@ -7,27 +7,35 @@
 ;;; protocol access ;;;
 
 
-(defn ensure-ok! [pat x] (p/ensure-ok! pat x))
-(defn to-str     [pat x] (p/to-str pat x))
-(defn regex      [pat]   (p/regex  pat))
-(defn parse      [pat s] (p/parse  pat s))
+(defn ok?    [pat x] ((p/ok? pat) x))
+(defn to-str [pat x] ((p/to-str pat) x))
+(defn regex  [pat]   (p/regex pat))
+(defn parse  [pat s] ((p/parse pat) s))
 
 (defn get [pat data]  (p/get pat data))
 (defn put [pat acc x] (p/put pat acc x))
 
+
+;;; util ;;;
+
+(defn- ensure-value-ok! [this value-check-fn v]
+  (if (value-check-fn v)
+    v
+    (throw (java.lang.IllegalArgumentException.
+             (str "Unexpected value " (pr-str v) " for " (pr-str this))))))
 
 ;;; public functions ;;;
 
 
 (defn format [fmt data]
   (->> data
-       (get fmt)
-       (ensure-ok! fmt)
-       (to-str fmt)))
+       (p/get fmt)
+       (ensure-value-ok! fmt (p/ok? fmt))
+       ((p/to-str fmt))))
 
 
 (defn match [fmt s]
-  (-> (regex fmt)
+  (-> (p/regex fmt)
       re-pattern
       (re-matches s)
       rest))
@@ -36,8 +44,8 @@
 (defn extract [fmt s]
   (->> s
        (match fmt)
-       (parse fmt)
-       (put fmt {})))
+       ((p/parse fmt))
+       (p/put fmt {})))
 
 
 ;;; impl ;;;
@@ -46,43 +54,38 @@
 (def re-quote java.util.regex.Pattern/quote)
 
 
-(defn ensure-value-ok! [this v value-check-fn]
-  (if (value-check-fn v)
-    v
-    (throw (java.lang.IllegalArgumentException.
-             (str "Unexpected value " (pr-str v) " for " (pr-str this))))))
 
 
 (extend-type Object
   p/Token
-  (ensure-ok! [this x] (-> (p/token this) (p/ensure-ok! x)))
-  (to-str     [this x] (-> (p/token this) (p/to-str x)))
-  (regex      [this]   (-> (p/token this) p/regex))
-  (parse      [this s] (-> (p/token this) (p/parse s))))
+  (ok?    [this] (-> (p/token this) p/ok?))
+  (to-str [this] (-> (p/token this) p/to-str))
+  (regex  [this] (-> (p/token this) p/regex))
+  (parse  [this] (-> (p/token this) p/parse)))
 
 
 (extend-type String
   p/GetPut
-  (get [this _data] this)
+  (get [this _data]   this)
   (put [_this acc _x] acc)
 
   p/Token
-  (ensure-ok! [_ x]  x)
-  (to-str     [_ x]  x)
-  (regex      [this] (str \( (re-quote this) \)))
-  (parse      [_ s]  s))
+  (ok?    [_]    identity)
+  (to-str [_]    identity)
+  (regex  [this] (str \( (re-quote this) \)))
+  (parse  [_]    identity))
 
 
 (extend-type Character
   p/GetPut
-  (get [this _data] this)
+  (get [this _data]   this)
   (put [_this acc _x] acc)
 
   p/Token
-  (ensure-ok! [_ x]  x)
-  (to-str     [_ x]  (str x))
-  (regex      [this] (str \( (re-quote (str this)) \)))
-  (parse      [_ s]  (first s)))
+  (ok?    [_]    identity)
+  (to-str [_]    str)
+  (regex  [this] (str \( (re-quote (str this)) \)))
+  (parse  [_]    first))
 
 
 (defn k "key" [k token]
@@ -95,41 +98,48 @@
 
 (def s "string"
   (reify p/Token
-    (ensure-ok! [this x] (ensure-value-ok! this x string?))
-    (to-str     [_ x]    (str x))
-    (regex      [_]      "(.*)")
-    (parse      [_ s]    s)))
+    (ok?    [_] string?)
+    (to-str [_] str)
+    (regex  [_] "(.*)")
+    (parse  [_] identity)))
 
 
 (def i "integer"
   (reify p/Token
-    (ensure-ok! [this x] (ensure-value-ok! this x integer?))
-    (to-str     [_ x]    (str x))
-    (regex      [_]      "(\\d*)")
-    (parse      [_ s]    (edn/read-string s))))
+    (ok?    [_] integer?)
+    (to-str [_] str)
+    (regex  [_] "(\\d*)")
+    (parse  [_] edn/read-string)))
 
 
 (def f "float"
   (reify p/Token
-    (ensure-ok! [this x] (ensure-value-ok! this x float?))
-    (to-str     [_ x]    (str x))
-    (regex      [_]      "(\\d*(?:\\.\\d*)?)")
-    (parse      [_ s]    (edn/read-string s))))
+    (ok?    [_] float?)
+    (to-str [_] str)
+    (regex  [_] "(\\d*(?:\\.\\d*)?)")
+    (parse  [_] edn/read-string)))
 
 
 (defn fv "format vector" [vfmt]
-  (let [full-regex (apply str (map p/regex vfmt))]
+  (let [to-str-fns  (mapv p/to-str vfmt)
+        full-to-str (fn [xs] (apply str (mapv #(%1 %2) to-str-fns xs)))
+
+        full-regex  (apply str (mapv p/regex vfmt))
+
+        parse-fns   (mapv p/parse vfmt)
+        full-parse  (fn [xs] (mapv #(%1 %2) parse-fns xs))
+
+        ok-fns      (mapv p/ok? vfmt)
+        full-ok?    (fn [xs] (every? boolean (mapv #(%1 %2) ok-fns xs)))]
     (reify
       p/GetPut
-      (get [_ data]   (map #(p/get % data) vfmt))
+      (get [_ data]   (mapv #(p/get % data) vfmt))
       (put [_ acc xs] (reduce (fn [acc [that x]] (p/put that acc x))
                               acc
-                              (map vector vfmt xs)))
+                              (mapv vector vfmt xs)))
 
       p/Token
-      (to-str     [_ xs] (apply str (map p/to-str vfmt xs)))
-      (regex      [_]    full-regex)
-      (parse      [_ ss] (map p/parse vfmt ss))
-      (ensure-ok! [_ xs] (every? (fn [[that x]] (p/ensure-ok! that x))
-                                 (map vector vfmt xs))
-                         xs))))
+      (to-str [_] full-to-str)
+      (regex  [_] full-regex)
+      (parse  [_] full-parse)
+      (ok?    [_] full-ok?))))

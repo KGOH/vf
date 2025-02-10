@@ -4,10 +4,10 @@
 
 (defprotocol Token
   :extend-via-metadata true
-  (ensure-ok! [this x])
-  (to-str     [this x])
-  (regex      [this])
-  (parse      [this s]))
+  (ok?    [this])
+  (to-str [this])
+  (regex  [this])
+  (parse  [this]))
 
 
 (defprotocol GetPut
